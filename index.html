@@ -1,0 +1,864 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>EURO-CONFLICT-MONITOR</title>
+  <meta name="description" content="Regional security and OSINT monitor dashboard" />
+  <style>
+    :root{
+      --bg:#071018;
+      --bg-2:#0b1721;
+      --panel:#0d1b27;
+      --panel-2:#111f2b;
+      --line:#213a4d;
+      --text:#eaf2f9;
+      --muted:#9ab0bf;
+      --red:#ff5570;
+      --orange:#ffb14d;
+      --yellow:#f1d770;
+      --green:#5fe0a6;
+      --cyan:#56d7ff;
+      --purple:#d1a7ff;
+      --shadow:0 8px 30px rgba(0,0,0,.28);
+    }
+
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{
+      margin:0;
+      font:14px/1.5 Inter,Segoe UI,Arial,sans-serif;
+      background:
+        radial-gradient(circle at top left,#153147 0%, rgba(21,49,71,.35) 18%, transparent 28%),
+        radial-gradient(circle at bottom right,#162027 0%, rgba(22,32,39,.35) 18%, transparent 26%),
+        var(--bg);
+      color:var(--text);
+    }
+
+    a{color:inherit;text-decoration:none}
+    img{max-width:100%;display:block}
+
+    header{
+      position:sticky;
+      top:0;
+      z-index:30;
+      height:72px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:0 28px;
+      border-bottom:1px solid var(--line);
+      background:rgba(7,16,24,.82);
+      backdrop-filter:blur(12px);
+    }
+
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      font-weight:800;
+      letter-spacing:.3px;
+    }
+
+    .logo{
+      width:34px;height:34px;
+      border:1px solid #2d6a82;
+      border-radius:9px;
+      display:grid;place-items:center;
+      color:var(--red);
+      background:rgba(255,85,112,.06);
+      box-shadow:0 0 20px rgba(255,85,112,.15);
+      font-size:18px;
+    }
+
+    .live{
+      display:flex;align-items:center;gap:8px;
+      color:#cfe5d5;
+      font-size:12px;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      font-weight:700;
+    }
+
+    .dot{
+      width:8px;height:8px;border-radius:50%;
+      background:var(--red);
+      box-shadow:0 0 10px rgba(255,85,112,.9);
+      display:inline-block;
+    }
+
+    main{
+      max-width:1500px;
+      margin:0 auto;
+      padding:22px 24px 48px;
+    }
+
+    .hero{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-end;
+      margin-bottom:18px;
+      gap:18px;
+    }
+
+    .eyebrow{
+      font-size:11px;
+      letter-spacing:1.7px;
+      text-transform:uppercase;
+      font-weight:800;
+      color:var(--red);
+    }
+
+    h1{
+      margin:8px 0 0;
+      font-size:clamp(28px,4vw,42px);
+      line-height:1.05;
+      letter-spacing:-.04em;
+    }
+
+    .hero p{
+      margin:10px 0 0;
+      color:var(--muted);
+      max-width:760px;
+      font-size:15px;
+    }
+
+    .stats{
+      display:grid;
+      grid-template-columns:repeat(4, minmax(170px,1fr));
+      gap:12px;
+      margin:20px 0 18px;
+    }
+
+    .stat,
+    .panel{
+      background:linear-gradient(180deg, var(--panel), var(--bg-2));
+      border:1px solid var(--line);
+      border-radius:14px;
+      box-shadow:var(--shadow);
+    }
+
+    .stat{
+      padding:18px 18px 16px;
+      min-height:118px;
+    }
+
+    .stat .value{
+      display:block;
+      font-size:clamp(26px,3vw,34px);
+      font-weight:800;
+      letter-spacing:-.04em;
+      margin-bottom:6px;
+    }
+
+    .stat .label{
+      color:var(--muted);
+      font-size:12px;
+      letter-spacing:.02em;
+    }
+
+    .accent{color:var(--red)}
+    .muted{color:var(--muted)}
+
+    .section{
+      margin-top:16px;
+    }
+
+    .panel-head{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      padding:14px 16px;
+      border-bottom:1px solid var(--line);
+    }
+
+    .panel-head strong{
+      font-size:13px;
+      letter-spacing:.06em;
+      text-transform:uppercase;
+      color:#dfeef8;
+    }
+
+    .panel-head .sub{
+      color:var(--muted);
+      font-size:11px;
+      letter-spacing:.04em;
+      text-transform:uppercase;
+    }
+
+    .map-shell{
+      position:relative;
+      height:560px;
+      background:#0a141d;
+      overflow:hidden;
+    }
+
+    .map-svg{
+      position:absolute;
+      inset:0;
+      width:100%;
+      height:100%;
+      display:block;
+      background:radial-gradient(circle at 30% 10%, rgba(72,215,255,.08), transparent 30%), #09141c;
+    }
+
+    .map-tooltip{
+      position:absolute;
+      z-index:30;
+      min-width:210px;
+      max-width:270px;
+      display:none;
+      padding:12px 12px 10px;
+      background:#0c1722;
+      border:1px solid #263d4e;
+      border-radius:12px;
+      box-shadow:var(--shadow);
+      font-size:12px;
+      line-height:1.5;
+    }
+
+    .map-tooltip strong{
+      display:block;
+      margin-bottom:6px;
+      font-size:13px;
+    }
+
+    .map-tooltip .link{
+      display:inline-block;
+      margin-top:6px;
+      color:var(--cyan);
+      font-weight:700;
+    }
+
+    .controls{
+      display:grid;
+      grid-template-columns:repeat(4, minmax(0,1fr));
+      gap:8px;
+      padding:12px 16px;
+      border-bottom:1px solid var(--line);
+    }
+
+    select,input{
+      width:100%;
+      border:1px solid #2a4358;
+      border-radius:10px;
+      background:#07141d;
+      color:var(--text);
+      padding:10px 12px;
+      font:inherit;
+      outline:none;
+    }
+
+    select:focus,input:focus{
+      border-color:var(--cyan);
+      box-shadow:0 0 0 2px rgba(86,215,255,.14);
+    }
+
+    .feed{
+      max-height:560px;
+      overflow:auto;
+      background:#0b1720;
+    }
+
+    .feed-item{
+      padding:14px 16px;
+      border-bottom:1px solid #1a2c3b;
+      cursor:pointer;
+      transition:background .2s ease;
+    }
+
+    .feed-item:hover{
+      background:#0e1d29;
+    }
+
+    .feed-item .top{
+      display:flex;justify-content:space-between;gap:12px;align-items:center;
+    }
+
+    .country{
+      font-weight:800;
+      letter-spacing:.02em;
+    }
+
+    .time{
+      color:var(--muted);
+      font-size:11px;
+      white-space:nowrap;
+    }
+
+    .event-type{
+      margin-top:5px;
+      color:#dfeaf4;
+      font-size:12px;
+    }
+
+    .tags{
+      display:flex;flex-wrap:wrap;gap:6px;
+      margin-top:9px;
+    }
+
+    .tag{
+      display:inline-flex;align-items:center;
+      padding:4px 8px;
+      border-radius:99px;
+      border:1px solid #2a4050;
+      color:#b9d0df;
+      font-size:10px;
+      letter-spacing:.03em;
+      text-transform:uppercase;
+      background:rgba(255,255,255,.02);
+    }
+
+    .tag.critical{color:#ff8e9d;border-color:#722d3b;background:rgba(255,85,112,.08)}
+    .tag.high{color:#ffbb5c;border-color:#7c562c;background:rgba(255,177,77,.08)}
+    .tag.medium{color:#f1d770;border-color:#6f682b;background:rgba(241,215,112,.08)}
+    .tag.confirmed{color:#8ce8bb;border-color:#2e6954;background:rgba(95,224,166,.08)}
+    .tag.claimed{color:#d5aafa;border-color:#644d7b;background:rgba(209,167,255,.08)}
+    .tag.suspected{color:#f2d0a2;border-color:#7c5f34;background:rgba(255,177,77,.06)}
+
+    .actors{
+      display:grid;
+      grid-template-columns:repeat(3, minmax(200px,1fr));
+      gap:12px;
+      padding:14px;
+    }
+
+    .actor{
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:14px 14px 12px;
+      background:#0b1822;
+      min-height:88px;
+    }
+
+    .actor b{
+      display:block;
+      margin-bottom:6px;
+      font-size:14px;
+    }
+
+    .actor span{
+      color:var(--muted);
+      font-size:11px;
+      line-height:1.5;
+    }
+
+    .info-panel{
+      padding:16px;
+      color:#b6c7d3;
+    }
+
+    .info-panel ul{
+      margin:12px 0 0;
+      padding-left:18px;
+    }
+
+    .info-panel li{
+      margin:8px 0;
+    }
+
+    .source{
+      color:var(--cyan);
+      font-weight:700;
+    }
+
+    footer{
+      color:#718896;
+      text-align:center;
+      padding:28px 10px 18px;
+      font-size:11px;
+    }
+
+    @media (max-width: 980px){
+      .stats{grid-template-columns:repeat(2,minmax(150px,1fr))}
+      .controls{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .actors{grid-template-columns:repeat(2,minmax(180px,1fr))}
+      .hero{flex-direction:column;align-items:flex-start}
+      .map-shell{height:500px}
+    }
+
+    @media (max-width: 560px){
+      header{padding:0 16px}
+      main{padding:14px 14px 32px}
+      .stats{grid-template-columns:1fr 1fr}
+      .controls{grid-template-columns:1fr}
+      .actors{grid-template-columns:1fr}
+      .map-shell{height:420px}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="logo">⚔</div>
+      <div>EURO-CONFLICT-MONITOR</div>
+    </div>
+    <div class="live"><span class="dot"></span>LIVE OSINT FEED</div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div>
+        <div class="eyebrow">Regionale Veiligheid · OSINT Intelligence</div>
+        <h1>European & Middle East Conflict Monitor</h1>
+        <p>Overzicht van militaire incidenten, luchtaanvallen, drone-inslagen en actieve dreigingen. Bronverificatie is onderverdeeld in bevestigd, geclaimd en verdachte meldingen om desinformatie te beperken.</p>
+      </div>
+    </section>
+
+    <section class="stats">
+      <div class="stat">
+        <span class="value" id="totalIncidents">0</span>
+        <span class="label">Geregistreerde incidenten</span>
+      </div>
+      <div class="stat">
+        <span class="value" id="totalCountries">0</span>
+        <span class="label">Gebieden / landen</span>
+      </div>
+      <div class="stat">
+        <span class="value" id="totalActors">0</span>
+        <span class="label">Actoren / strijdkrachten</span>
+      </div>
+      <div class="stat">
+        <span class="value accent" id="updatedTime">--:--</span>
+        <span class="label">Dashboard bijgewerkt</span>
+      </div>
+    </section>
+
+    <section class="panel section">
+      <div class="panel-head">
+        <strong>Incidentenkaart</strong>
+        <span class="sub">Live overzicht</span>
+      </div>
+      <div class="map-shell" id="map">
+        <svg id="mapSvg" class="map-svg" viewBox="0 0 1000 560" preserveAspectRatio="xMidYMid meet" aria-label="Map area"></svg>
+        <div class="map-tooltip" id="mapTooltip"></div>
+      </div>
+    </section>
+
+    <section class="panel section">
+      <div class="panel-head">
+        <strong>Incidentenfeed</strong>
+        <span class="sub" id="feedStatus">DEMO OSINT FEED</span>
+      </div>
+
+      <div class="controls">
+        <select id="countryFilter">
+          <option value="">Alle landen/gebieden</option>
+        </select>
+        <select id="severityFilter">
+          <option value="">Alle risiconiveaus</option>
+          <option>Kritiek</option>
+          <option>Hoog</option>
+          <option>Middel</option>
+        </select>
+        <select id="confidenceFilter">
+          <option value="">Alle verificatiestatussen</option>
+          <option>Confirmed</option>
+          <option>Claimed</option>
+          <option>Suspected</option>
+        </select>
+        <input id="searchInput" type="text" placeholder="Zoek op actor, locatie, aanval..." />
+      </div>
+
+      <div class="feed" id="feed"></div>
+    </section>
+
+    <section class="panel section">
+      <div class="panel-head">
+        <strong>Betrokken Actoren & Strijdkrachten</strong>
+        <span class="sub">Publieke OSINT & defensierapporten</span>
+      </div>
+      <div class="actors" id="actorGrid"></div>
+    </section>
+
+    <section class="panel section">
+      <div class="panel-head">
+        <strong>Live Data & Integratie</strong>
+        <span class="sub">Aanbevolen bronnen</span>
+      </div>
+      <div class="info-panel">
+        <strong style="color:#eaf2f9;">Aanbevolen OSINT en conflictfeeds:</strong>
+        <ul>
+          <li><span class="source">ACLED API</span> — Armed Conflict Location & Event Data Project voor gevechts- en conflictpunten.</li>
+          <li><span class="source">UKMTO & Ambrey</span> — Shipping incidents in de Rode Zee en Perzische Golf.</li>
+          <li><span class="source">LiveUAmap</span> — Live updates over militaire activiteiten en raketaanvallen.</li>
+        </ul>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    Gegevens in deze starter zijn demonstratievoorbeelden. Koppel een geauthenticeerde OSINT-API om live incidenten te tonen.<br />
+    EURO-CONFLICT-MONITOR
+  </footer>
+
+  <script>
+    const incidents = [
+      {
+        id:"c1",
+        country:"Oekraïne",
+        city:"Charkov",
+        lat:49.99,
+        lng:36.23,
+        attack:"Luchtaanval / drone-inslag",
+        actor:"Russische strijdkrachten",
+        severity:"Kritiek",
+        confidence:"Confirmed",
+        time:"15m geleden",
+        target:"Energie-infrastructuur",
+        source:"OSINT Intelligence",
+        sourceUrl:"https://example.org"
+      },
+      {
+        id:"c2",
+        country:"Israël",
+        city:"Tel Aviv",
+        lat:32.08,
+        lng:34.78,
+        attack:"Raketonderschepping",
+        actor:"Hezbollah",
+        severity:"Hoog",
+        confidence:"Confirmed",
+        time:"40m geleden",
+        target:"Stedelijk gebied",
+        source:"IDF Feed",
+        sourceUrl:"https://example.org"
+      },
+      {
+        id:"c3",
+        country:"Rode Zee",
+        city:"Bab al-Mandab",
+        lat:12.58,
+        lng:43.33,
+        attack:"Antischeepsraket op vrachtschip",
+        actor:"Houthi-rebellen",
+        severity:"Kritiek",
+        confidence:"Claimed",
+        time:"2u geleden",
+        target:"Commerciële scheepvaart",
+        source:"UKMTO Alert",
+        sourceUrl:"https://example.org"
+      },
+      {
+        id:"c4",
+        country:"Syrië",
+        city:"Aleppo",
+        lat:36.20,
+        lng:37.16,
+        attack:"Luchtaanval op militaire basis",
+        actor:"IDF Air Force",
+        severity:"Hoog",
+        confidence:"Confirmed",
+        time:"5u geleden",
+        target:"Wapendepot",
+        source:"SOHR Report",
+        sourceUrl:"https://example.org"
+      },
+      {
+        id:"c5",
+        country:"Zwarte Zee",
+        city:"Krim",
+        lat:44.95,
+        lng:34.10,
+        attack:"USV-aanval op patrouilleschip",
+        actor:"Oekraïense GUR",
+        severity:"Kritiek",
+        confidence:"Confirmed",
+        time:"8u geleden",
+        target:"Patrouilleschip",
+        source:"Militaire persdienst",
+        sourceUrl:"https://example.org"
+      },
+      {
+        id:"c6",
+        country:"Irak",
+        city:"Erbil",
+        lat:36.19,
+        lng:44.01,
+        attack:"Kruit- en dronebeschietingen",
+        actor:"Onbekende milities",
+        severity:"Middel",
+        confidence:"Suspected",
+        time:"1d geleden",
+        target:"Militaire faciliteit",
+        source:"OSINT Monitor",
+        sourceUrl:"https://example.org"
+      }
+    ];
+
+    const actorsList = [
+      "Russische strijdkrachten",
+      "Oekraïense strijdkrachten",
+      "IDF Air Force",
+      "Hezbollah",
+      "Houthi-rebellen",
+      "Onbekende milities"
+    ];
+
+    const mapSvg = document.getElementById("mapSvg");
+    const mapTooltip = document.getElementById("mapTooltip");
+    const countryFilter = document.getElementById("countryFilter");
+    const severityFilter = document.getElementById("severityFilter");
+    const confidenceFilter = document.getElementById("confidenceFilter");
+    const searchInput = document.getElementById("searchInput");
+    const feed = document.getElementById("feed");
+    const actorGrid = document.getElementById("actorGrid");
+
+    const fieldColors = {
+      Kritiek: "#ff5570",
+      Hoog: "#ffb14d",
+      Middel: "#f1d770",
+      Confirmed: "#5fe0a6",
+      Claimed: "#d1a7ff",
+      Suspected: "#ffb14d"
+    };
+
+    function escapeHtml(value) {
+      return String(value || "").replace(/[&<>\"']/g, (char) => ({
+        "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"
+      }[char]));
+    }
+
+    function countryFlag(country) {
+      const map = {
+        "Oekraïne": "🇺🇦",
+        "Israël": "🇮🇱",
+        "Rode Zee": "🇾🇪",
+        "Syrië": "🇸🇾",
+        "Zwarte Zee": "🌊",
+        "Irak": "🇮🇶"
+      };
+      return map[country] || "🌐";
+    }
+
+    function getFilteredIncidents() {
+      const country = countryFilter.value;
+      const severity = severityFilter.value;
+      const confidence = confidenceFilter.value;
+      const search = searchInput.value.trim().toLowerCase();
+
+      return incidents.filter((item) => {
+        const matchesCountry = !country || item.country === country;
+        const matchesSeverity = !severity || item.severity === severity;
+        const matchesConfidence = !confidence || item.confidence === confidence;
+        const haystack = [
+          item.country, item.city, item.attack, item.actor, item.target, item.source
+        ].join(" ").toLowerCase();
+
+        const matchesSearch = !search || haystack.includes(search);
+        return matchesCountry && matchesSeverity && matchesConfidence && matchesSearch;
+      });
+    }
+
+    function renderStats() {
+      document.getElementById("totalIncidents").textContent = incidents.length;
+      document.getElementById("totalCountries").textContent = new Set(incidents.map(i => i.country)).size;
+      document.getElementById("totalActors").textContent = new Set(incidents.map(i => i.actor)).size;
+      document.getElementById("updatedTime").textContent = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    }
+
+    function renderFilterOptions() {
+      const countries = [...new Set(incidents.map(i => i.country))].sort();
+      const currentValue = countryFilter.value;
+
+      countryFilter.innerHTML = '<option value="">Alle landen/gebieden</option>';
+      countries.forEach((country) => {
+        const opt = document.createElement("option");
+        opt.value = country;
+        opt.textContent = country;
+        countryFilter.appendChild(opt);
+      });
+
+      if (currentValue && countries.includes(currentValue)) {
+        countryFilter.value = currentValue;
+      }
+    }
+
+    function drawMap() {
+      const width = 1000;
+      const height = 560;
+
+      const roughEuropeShapes = [
+        "M 65 140 L 120 110 L 170 90 L 220 105 L 260 150 L 300 170 L 345 195 L 370 225 L 390 255 L 380 310 L 345 345 L 330 420 L 290 455 L 260 470 L 225 440 L 185 410 L 150 390 L 115 350 L 90 300 L 60 260 L 55 225 Z",
+        "M 390 230 L 470 210 L 520 220 L 565 245 L 610 280 L 655 302 L 705 335 L 735 380 L 721 430 L 650 450 L 585 430 L 545 410 L 510 385 L 460 350 L 435 320 L 405 280 Z",
+        "M 430 95 L 510 75 L 560 120 L 610 170 L 600 220 L 540 230 L 485 195 L 432 145 Z",
+        "M 700 245 L 780 235 L 845 290 L 838 360 L 785 395 L 720 375 L 685 330 Z"
+      ];
+
+      mapSvg.innerHTML = `
+        <defs>
+          <linearGradient id="seaGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#0a1d2b"/>
+            <stop offset="100%" stop-color="#071018"/>
+          </linearGradient>
+        </defs>
+        <rect width="${width}" height="${height}" fill="url(#seaGlow)"/>
+        <g opacity=".88">
+          ${roughEuropeShapes.map((shape) => `
+            <path d="${shape}" fill="#102838" stroke="#2a4d63" stroke-width="2" />
+          `).join("")}
+        </g>
+        <g opacity=".6">
+          <path d="M 60 180 C 220 150, 360 145, 520 175 S 770 220, 930 190" stroke="#1b3b50" stroke-width="2" fill="none" />
+          <path d="M 100 390 C 260 420, 430 420, 620 370 S 820 300, 935 330" stroke="#1b3b50" stroke-width="2" fill="none" />
+        </g>
+      `;
+    }
+
+    function project(lat, lng) {
+      const x = ((lng + 15) / 60) * 1000;
+      const y = ((55 - lat) / 55) * 560;
+      return { x, y };
+    }
+
+    function renderMap() {
+      drawMap();
+
+      const visible = getFilteredIncidents();
+      const points = visible.map((item) => {
+        const p = project(item.lat, item.lng);
+        const color = fieldColors[item.severity] || "#56d7ff";
+        return {
+          ...item,
+          x: p.x,
+          y: p.y,
+          color
+        };
+      });
+
+      points.forEach((item) => {
+        const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        circle.setAttribute("cx", item.x);
+        circle.setAttribute("cy", item.y);
+        circle.setAttribute("r", 8);
+        circle.setAttribute("fill", item.color);
+        circle.setAttribute("stroke", "#fff");
+        circle.setAttribute("stroke-width", 2);
+        circle.setAttribute("opacity", "0.9");
+        circle.style.cursor = "pointer";
+
+        const halo = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        halo.setAttribute("cx", item.x);
+        halo.setAttribute("cy", item.y);
+        halo.setAttribute("r", 18);
+        halo.setAttribute("fill", item.color);
+        halo.setAttribute("opacity", "0.12");
+
+        const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        label.setAttribute("x", item.x + 14);
+        label.setAttribute("y", item.y + 5);
+        label.setAttribute("fill", "#cfe2ed");
+        label.setAttribute("font-size", "11");
+        label.setAttribute("font-weight", "700");
+        label.textContent = item.country;
+
+        circle.addEventListener("mouseenter", (e) => {
+          e.stopPropagation();
+          mapTooltip.innerHTML = `
+            <strong>${escapeHtml(item.country)} · ${escapeHtml(item.city || "Regio")}</strong>
+            ${escapeHtml(item.attack)}<br />
+            Actor: ${escapeHtml(item.actor)}<br />
+            Verificatie: ${escapeHtml(item.confidence)}<br />
+            Doel: ${escapeHtml(item.target)}
+            <div class="link">Bron: ${escapeHtml(item.source)}</div>
+          `;
+          mapTooltip.style.display = "block";
+          const box = mapTooltip.getBoundingClientRect();
+          const rect = document.getElementById("map").getBoundingClientRect();
+          const x = item.x / 1000 * rect.width;
+          const y = item.y / 560 * rect.height;
+          mapTooltip.style.left = Math.min(Math.max(x + 18, 8), rect.width - box.width - 10) + "px";
+          mapTooltip.style.top = Math.min(Math.max(y + 18, 8), rect.height - box.height - 10) + "px";
+        });
+
+        circle.addEventListener("mouseleave", () => {
+          mapTooltip.style.display = "none";
+        });
+
+        circle.addEventListener("click", () => {
+          const target = document.querySelector(`.feed-item[data-id="${item.id}"]`);
+          if (target) {
+            target.scrollIntoView({ behavior: "smooth", block: "nearest" });
+            target.style.background = "rgba(86,215,255,.08)";
+            setTimeout(() => target.style.background = "", 900);
+          }
+        });
+
+        mapSvg.appendChild(halo);
+        mapSvg.appendChild(circle);
+        mapSvg.appendChild(label);
+      });
+    }
+
+    function renderFeed() {
+      const filtered = getFilteredIncidents();
+      feed.innerHTML = filtered.map((item) => `
+        <div class="feed-item" data-id="${item.id}" tabindex="0">
+          <div class="top">
+            <span class="country">${countryFlag(item.country)} ${escapeHtml(item.country)}</span>
+            <span class="time">${escapeHtml(item.time)}</span>
+          </div>
+          <div class="event-type">${escapeHtml(item.attack)} · ${escapeHtml(item.target)}</div>
+          <div class="tags">
+            <span class="tag ${item.severity.toLowerCase()}">${escapeHtml(item.severity)}</span>
+            <span class="tag ${item.confidence.toLowerCase()}">${escapeHtml(item.confidence)}</span>
+            <span class="tag">${escapeHtml(item.actor)}</span>
+            <span class="tag">${escapeHtml(item.city)}</span>
+          </div>
+        </div>
+      `).join("") || `
+        <div class="feed-item">
+          <div class="event-type">Geen incidenten gevonden met deze filters.</div>
+        </div>
+      `;
+
+      feed.querySelectorAll(".feed-item").forEach((node) => {
+        node.addEventListener("click", () => {
+          const id = node.getAttribute("data-id");
+          const incident = incidents.find(item => item.id === id);
+          if (!incident) return;
+          const p = project(incident.lat, incident.lng);
+          const box = document.getElementById("map").getBoundingClientRect();
+          mapTooltip.innerHTML = `
+            <strong>${escapeHtml(incident.country)} · ${escapeHtml(incident.city || "Regio")}</strong>
+            ${escapeHtml(incident.attack)}<br />
+            Actor: ${escapeHtml(incident.actor)}<br />
+            Verificatie: ${escapeHtml(incident.confidence)}<br />
+            Doel: ${escapeHtml(incident.target)}
+            <div class="link">Bron: ${escapeHtml(incident.source)}</div>
+          `;
+          mapTooltip.style.display = "block";
+          mapTooltip.style.left = Math.min(Math.max((p.x / 1000) * box.width + 18, 8), box.width - 220) + "px";
+          mapTooltip.style.top = Math.min(Math.max((p.y / 560) * box.height + 18, 8), box.height - 150) + "px";
+        });
+      });
+    }
+
+    function renderActors() {
+      actorGrid.innerHTML = actorsList.map((name) => `
+        <div class="actor">
+          <b>${escapeHtml(name)}</b>
+          <span>Publieke rapportages · toewijzing onder voorbehoud.</span>
+        </div>
+      `).join("");
+    }
+
+    function render() {
+      renderMap();
+      renderFeed();
+      renderActors();
+    }
+
+    [countryFilter, severityFilter, confidenceFilter].forEach((el) => {
+      el.addEventListener("change", render);
+    });
+
+    searchInput.addEventListener("input", render);
+
+    renderStats();
+    renderFilterOptions();
+    render();
+  </script>
+</body>
+</html>
